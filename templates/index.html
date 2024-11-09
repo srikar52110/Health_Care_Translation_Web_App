@@ -3,121 +3,99 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Healthcare Translation Web App</title>
-    <style>
-        /* Simple styling for mobile-first design */
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        #original, #translated {
-            margin: 10px 0;
-            padding: 10px;
-            border: 1px solid #ddd;
-        }
-
-        button {
-            padding: 10px 20px;
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-    </style>
+    <title>Healthcare Translation App</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Healthcare Translation Web App</h1>
 
-        <!-- Language selection -->
-        <label for="inputLanguage">Input Language:</label>
-        <select id="inputLanguage">
-            <option value="en-US">English</option>
-            <option value="es-ES">Spanish</option>
-            <option value="fr-FR">French</option>
-        </select>
+    <h1>Healthcare Translation</h1>
 
-        <label for="outputLanguage">Output Language:</label>
-        <select id="outputLanguage">
-            <option value="en">English</option>
-            <option value="es">Spanish</option>
-            <option value="fr">French</option>
-        </select>
+    <!-- Language Selection -->
+    <label for="inputLanguage">Select Input Language:</label>
+    <select id="inputLanguage">
+        <option value="en-US">English</option>
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <!-- Add more languages as needed -->
+    </select>
 
-        <!-- Button to start speech recognition -->
-        <button id="startRecognition">Start Speaking</button>
-        <p id="status"></p>
+    <label for="outputLanguage">Select Output Language:</label>
+    <select id="outputLanguage">
+        <option value="es">Spanish</option>
+        <option value="fr">French</option>
+        <option value="en">English</option>
+        <!-- Add more languages as needed -->
+    </select>
 
-        <!-- Display the original and translated text -->
-        <div id="original"></div>
-        <div id="translated"></div>
+    <br><br>
 
-        <!-- Audio element to play the translated text -->
-        <audio id="audio-player" controls style="display: none;"></audio>
-    </div>
+    <!-- Button to Start Voice Recognition -->
+    <button id="start-btn">Start Recording</button>
+    <p id="status"></p>
 
+    <h2>Original Text</h2>
+    <p id="original-text">No text spoken yet.</p>
+
+    <h2>Translated Text</h2>
+    <p id="translated-text">No translation yet.</p>
+
+    <!-- JavaScript for handling voice recognition and translation -->
     <script>
+        const startButton = document.getElementById("start-btn");
+        const statusElement = document.getElementById("status");
+        const originalTextElement = document.getElementById("original-text");
+        const translatedTextElement = document.getElementById("translated-text");
+        const inputLanguageElement = document.getElementById("inputLanguage");
+        const outputLanguageElement = document.getElementById("outputLanguage");
+
+        // Set up Web Speech API for speech-to-text
         const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = 'en-US';
+        recognition.lang = "en-US";
+        recognition.continuous = false;
 
-        const startRecognitionButton = document.getElementById('startRecognition');
-        const statusElement = document.getElementById('status');
-        const originalTextElement = document.getElementById('original');
-        const translatedTextElement = document.getElementById('translated');
-        const audioPlayer = document.getElementById('audio-player');
+        // Start recording when button is clicked
+        startButton.addEventListener('click', () => {
+            recognition.start();
+            statusElement.textContent = "Listening...";
+        });
 
-        // Speech recognition setup
-        recognition.onstart = () => { statusElement.textContent = 'Listening...'; };
-        recognition.onend = () => { statusElement.textContent = 'Stopped listening.'; };
-        recognition.onerror = (event) => { statusElement.textContent = 'Error: ' + event.error; };
-
-        recognition.onresult = (event) => {
+        recognition.onresult = async (event) => {
             const spokenText = event.results[0][0].transcript;
-            originalTextElement.textContent = 'Original Text: ' + spokenText;
+            originalTextElement.textContent = `Original Text: ${spokenText}`;
 
-            const inputLanguage = document.getElementById('inputLanguage').value;
-            const outputLanguage = document.getElementById('outputLanguage').value;
+            const inputLanguage = inputLanguageElement.value;
+            const outputLanguage = outputLanguageElement.value;
 
-            fetch('/translate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: spokenText, input_language: inputLanguage, output_language: outputLanguage })
-            })
-            .then(response => response.json())
-            .then(data => {
+            // Send the spoken text to the backend for translation
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        text: spokenText,
+                        input_language: inputLanguage,
+                        output_language: outputLanguage
+                    })
+                });
+
+                const data = await response.json();
+                
                 if (data.translated_text) {
                     translatedTextElement.textContent = 'Translated Text: ' + data.translated_text;
-
-                    // Fetch and play translated text audio
-                    fetch('/speak', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ text: data.translated_text, language: outputLanguage })
-                    })
-                    .then(response => response.blob())
-                    .then(blob => {
-                        const url = URL.createObjectURL(blob);
-                        audioPlayer.src = url;
-                        audioPlayer.style.display = 'block';
-                        audioPlayer.play();
-                    })
-                    .catch(error => alert('Error in speech synthesis: ' + error));
+                } else {
+                    translatedTextElement.textContent = 'Translation failed.';
                 }
-            })
-            .catch(error => alert('Error in translation: ' + error));
+            } catch (error) {
+                console.error('Error during translation:', error);
+                translatedTextElement.textContent = 'Error during translation.';
+            }
         };
 
-        startRecognitionButton.onclick = () => { recognition.start(); };
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error", event.error);
+            statusElement.textContent = "Error occurred during speech recognition.";
+        };
     </script>
+
 </body>
 </html>
