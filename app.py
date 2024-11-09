@@ -8,11 +8,11 @@ import uuid
 app = Flask(__name__)
 
 # Load OpenAI API key from environment variable
-from dotenv import load_dotenv, find_dotenv
-_ = load_dotenv(find_dotenv())
+#from dotenv import load_dotenv, find_dotenv
+#_ = load_dotenv(find_dotenv())
 
-openai.api_key  = os.getenv('OPENAI_API_KEY')
-
+#openai.api_key  = os.getenv('OPENAI_API_KEY')
+openai.api_key = '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'
 
 @app.route('/')
 def index():
