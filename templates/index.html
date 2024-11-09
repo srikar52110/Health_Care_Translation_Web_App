@@ -4,107 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Healthcare Translation Web App</title>
-    <link rel="stylesheet" href="static/styles.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            text-align: center;
+        }
+        .container {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        textarea, button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .response {
+            padding: 20px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .response p {
+            font-size: 16px;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Healthcare Translation</h1>
-        <form id="translation-form">
-            <textarea id="text-input" placeholder="Enter text for translation..." required></textarea><br>
-            <label for="input-language">Select input language:</label>
-            <select id="input-language">
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <!-- Add more languages if needed -->
-            </select><br><br>
 
-            <label for="output-language">Select output language:</label>
-            <select id="output-language">
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-                <!-- Add more languages if needed -->
-            </select><br><br>
+<header>
+    <h1>Healthcare Translation Web App</h1>
+</header>
 
-            <button type="submit">Translate</button>
-        </form>
+<div class="container">
+    <textarea id="inputText" placeholder="Enter text to translate..." rows="4"></textarea>
 
-        <h2>Translated Text:</h2>
-        <div id="translated-text"></div><br>
-
-        <button id="speak-btn" disabled>Speak</button><br>
-
-        <audio id="audio-output" controls style="display:none;">
-            <source id="audio-source" src="" type="audio/mp3">
-            Your browser does not support the audio element.
-        </audio>
+    <button id="translateBtn">Translate</button>
+    
+    <div class="response" id="responseContainer" style="display: none;">
+        <p><strong>Translated Text:</strong></p>
+        <p id="translatedText"></p>
     </div>
 
-    <script>
-        const form = document.getElementById("translation-form");
-        const translatedTextDiv = document.getElementById("translated-text");
-        const speakButton = document.getElementById("speak-btn");
-        const audioOutput = document.getElementById("audio-output");
-        const audioSource = document.getElementById("audio-source");
+    <div class="response" id="errorContainer" style="display: none;">
+        <p><strong>Error:</strong></p>
+        <p id="errorText"></p>
+    </div>
+</div>
 
-        form.addEventListener("submit", async (event) => {
-            event.preventDefault();
+<script>
+    document.getElementById('translateBtn').addEventListener('click', async function() {
+        const inputText = document.getElementById('inputText').value;
+        if (!inputText) {
+            alert("Please enter some text to translate.");
+            return;
+        }
 
-            const textInput = document.getElementById("text-input").value;
-            const inputLanguage = document.getElementById("input-language").value;
-            const outputLanguage = document.getElementById("output-language").value;
-
-            // Translate text using the backend
-            const response = await fetch("/translate", {
-                method: "POST",
+        try {
+            // Send translation request to the backend
+            const response = await fetch('/translate', {
+                method: 'POST',
                 headers: {
-                    "Content-Type": "application/json"
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    text: textInput,
-                    input_language: inputLanguage,
-                    output_language: outputLanguage
+                    text: inputText,
+                    input_language: 'en', // Change this if needed
+                    output_language: 'es' // Change this if needed
                 })
             });
 
             const data = await response.json();
-
             if (data.translated_text) {
-                // Display translated text
-                translatedTextDiv.textContent = data.translated_text;
-                speakButton.disabled = false;  // Enable the speak button
+                // Display the translated text
+                document.getElementById('responseContainer').style.display = 'block';
+                document.getElementById('translatedText').innerText = data.translated_text;
+                document.getElementById('errorContainer').style.display = 'none';
             } else {
-                translatedTextDiv.textContent = "Translation failed. Please try again.";
-                speakButton.disabled = true;
+                throw new Error(data.error || "Something went wrong.");
             }
-        });
+        } catch (error) {
+            document.getElementById('errorContainer').style.display = 'block';
+            document.getElementById('errorText').innerText = error.message;
+            document.getElementById('responseContainer').style.display = 'none';
+        }
+    });
+</script>
 
-        speakButton.addEventListener("click", async () => {
-            const translatedText = translatedTextDiv.textContent;
-
-            // Send the translated text to the backend for TTS
-            const response = await fetch("/speak", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    text: translatedText
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.audio_url) {
-                // Play the audio output
-                audioSource.src = data.audio_url;
-                audioOutput.style.display = "block";  // Show the audio player
-                audioOutput.play();
-            } else {
-                alert("Error generating speech.");
-            }
-        });
-    </script>
 </body>
 </html>
