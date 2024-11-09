@@ -3,99 +3,108 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Healthcare Translation App</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Healthcare Translation Web App</title>
+    <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
+    <div class="container">
+        <h1>Healthcare Translation</h1>
+        <form id="translation-form">
+            <textarea id="text-input" placeholder="Enter text for translation..." required></textarea><br>
+            <label for="input-language">Select input language:</label>
+            <select id="input-language">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <!-- Add more languages if needed -->
+            </select><br><br>
 
-    <h1>Healthcare Translation</h1>
+            <label for="output-language">Select output language:</label>
+            <select id="output-language">
+                <option value="en">English</option>
+                <option value="es">Spanish</option>
+                <option value="fr">French</option>
+                <!-- Add more languages if needed -->
+            </select><br><br>
 
-    <!-- Language Selection -->
-    <label for="inputLanguage">Select Input Language:</label>
-    <select id="inputLanguage">
-        <option value="en-US">English</option>
-        <option value="es">Spanish</option>
-        <option value="fr">French</option>
-        <!-- Add more languages as needed -->
-    </select>
+            <button type="submit">Translate</button>
+        </form>
 
-    <label for="outputLanguage">Select Output Language:</label>
-    <select id="outputLanguage">
-        <option value="es">Spanish</option>
-        <option value="fr">French</option>
-        <option value="en">English</option>
-        <!-- Add more languages as needed -->
-    </select>
+        <h2>Translated Text:</h2>
+        <div id="translated-text"></div><br>
 
-    <br><br>
+        <button id="speak-btn" disabled>Speak</button><br>
 
-    <!-- Button to Start Voice Recognition -->
-    <button id="start-btn">Start Recording</button>
-    <p id="status"></p>
+        <audio id="audio-output" controls style="display:none;">
+            <source id="audio-source" src="" type="audio/mp3">
+            Your browser does not support the audio element.
+        </audio>
+    </div>
 
-    <h2>Original Text</h2>
-    <p id="original-text">No text spoken yet.</p>
-
-    <h2>Translated Text</h2>
-    <p id="translated-text">No translation yet.</p>
-
-    <!-- JavaScript for handling voice recognition and translation -->
     <script>
-        const startButton = document.getElementById("start-btn");
-        const statusElement = document.getElementById("status");
-        const originalTextElement = document.getElementById("original-text");
-        const translatedTextElement = document.getElementById("translated-text");
-        const inputLanguageElement = document.getElementById("inputLanguage");
-        const outputLanguageElement = document.getElementById("outputLanguage");
+        const form = document.getElementById("translation-form");
+        const translatedTextDiv = document.getElementById("translated-text");
+        const speakButton = document.getElementById("speak-btn");
+        const audioOutput = document.getElementById("audio-output");
+        const audioSource = document.getElementById("audio-source");
 
-        // Set up Web Speech API for speech-to-text
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = "en-US";
-        recognition.continuous = false;
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
 
-        // Start recording when button is clicked
-        startButton.addEventListener('click', () => {
-            recognition.start();
-            statusElement.textContent = "Listening...";
+            const textInput = document.getElementById("text-input").value;
+            const inputLanguage = document.getElementById("input-language").value;
+            const outputLanguage = document.getElementById("output-language").value;
+
+            // Translate text using the backend
+            const response = await fetch("/translate", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    text: textInput,
+                    input_language: inputLanguage,
+                    output_language: outputLanguage
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.translated_text) {
+                // Display translated text
+                translatedTextDiv.textContent = data.translated_text;
+                speakButton.disabled = false;  // Enable the speak button
+            } else {
+                translatedTextDiv.textContent = "Translation failed. Please try again.";
+                speakButton.disabled = true;
+            }
         });
 
-        recognition.onresult = async (event) => {
-            const spokenText = event.results[0][0].transcript;
-            originalTextElement.textContent = `Original Text: ${spokenText}`;
+        speakButton.addEventListener("click", async () => {
+            const translatedText = translatedTextDiv.textContent;
 
-            const inputLanguage = inputLanguageElement.value;
-            const outputLanguage = outputLanguageElement.value;
+            // Send the translated text to the backend for TTS
+            const response = await fetch("/speak", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    text: translatedText
+                })
+            });
 
-            // Send the spoken text to the backend for translation
-            try {
-                const response = await fetch('/translate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        text: spokenText,
-                        input_language: inputLanguage,
-                        output_language: outputLanguage
-                    })
-                });
+            const data = await response.json();
 
-                const data = await response.json();
-                
-                if (data.translated_text) {
-                    translatedTextElement.textContent = 'Translated Text: ' + data.translated_text;
-                } else {
-                    translatedTextElement.textContent = 'Translation failed.';
-                }
-            } catch (error) {
-                console.error('Error during translation:', error);
-                translatedTextElement.textContent = 'Error during translation.';
+            if (data.audio_url) {
+                // Play the audio output
+                audioSource.src = data.audio_url;
+                audioOutput.style.display = "block";  // Show the audio player
+                audioOutput.play();
+            } else {
+                alert("Error generating speech.");
             }
-        };
-
-        recognition.onerror = (event) => {
-            console.error("Speech recognition error", event.error);
-            statusElement.textContent = "Error occurred during speech recognition.";
-        };
+        });
     </script>
-
 </body>
 </html>
