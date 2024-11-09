@@ -3,10 +3,10 @@ import logging
 from flask import Flask, render_template, request, jsonify
 from gtts import gTTS
 import openai
-from dotenv import load_dotenv
+#from dotenv import load_dotenv
 
 # Load environment variables
-load_dotenv()
+#load_dotenv()
 
 #--------------------
 # Initialize OpenAI API key from environment variables
