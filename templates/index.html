@@ -30,9 +30,9 @@
             cursor: pointer;
         }
 
-            button:hover {
-                background-color: #0056b3;
-            }
+        button:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 <body>
@@ -93,28 +93,28 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: spokenText, input_language: inputLanguage, output_language: outputLanguage })
             })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.translated_text) {
-                        translatedTextElement.textContent = 'Translated Text: ' + data.translated_text;
+            .then(response => response.json())
+            .then(data => {
+                if (data.translated_text) {
+                    translatedTextElement.textContent = 'Translated Text: ' + data.translated_text;
 
-                        // Fetch and play translated text audio
-                        fetch('/speak', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ text: data.translated_text, language: outputLanguage })
-                        })
-                            .then(response => response.blob())
-                            .then(blob => {
-                                const url = URL.createObjectURL(blob);
-                                audioPlayer.src = url;
-                                audioPlayer.style.display = 'block';
-                                audioPlayer.play();
-                            })
-                            .catch(error => alert('Error in speech synthesis: ' + error));
-                    }
-                })
-                .catch(error => alert('Error in translation: ' + error));
+                    // Fetch and play translated text audio
+                    fetch('/speak', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ text: data.translated_text, language: outputLanguage })
+                    })
+                    .then(response => response.blob())
+                    .then(blob => {
+                        const url = URL.createObjectURL(blob);
+                        audioPlayer.src = url;
+                        audioPlayer.style.display = 'block';
+                        audioPlayer.play();
+                    })
+                    .catch(error => alert('Error in speech synthesis: ' + error));
+                }
+            })
+            .catch(error => alert('Error in translation: ' + error));
         };
 
         startRecognitionButton.onclick = () => { recognition.start(); };
